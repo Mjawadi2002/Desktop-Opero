@@ -1,10 +1,9 @@
-# Opero Desktop — builds Windows (.exe) and macOS (.dmg) on every push to main/master
-name: Build Opero Desktop App
+# CI — builds Windows + macOS installers on every push to main/master
+name: Build Teamyy Desktop
 
 on:
   push:
     branches: [main, master]
-    tags: ['v*']
   workflow_dispatch:
 
 jobs:
@@ -26,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      # 1 — Check out this desktop repo into the root working directory
+      # 1 — Check out the desktop repo
       - name: Checkout desktop app
         uses: actions/checkout@v4
 
@@ -60,30 +59,19 @@ jobs:
       - name: Install desktop dependencies
         run: npm ci
 
-      # 7 — Build the native installer (Windows: NSIS .exe  |  macOS: .dmg)
+      # 7 — Build the native installer (Windows: NSIS .exe + portable | macOS: .dmg)
       - name: Build ${{ matrix.platform-label }} app
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npm run ${{ matrix.script }} -- --publish never
 
-      # 8 — Create the GitHub Release (if missing) then upload the artifacts
-      - name: Upload to GitHub Release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
-
-          # Create the release if it does not already exist
-          if ! gh release view "$TAG" 2>/dev/null; then
-            gh release create "$TAG" \
-              --title "Opero Desktop v${VERSION}" \
-              --notes "Opero Desktop v${VERSION} — Windows (.exe) and macOS (.dmg) installers."
-          fi
-
-          # Upload every installer produced by electron-builder
-          find dist -maxdepth 1 \( -name "*.exe" -o -name "*.dmg" \) | while read f; do
-            echo "Uploading $f"
-            gh release upload "$TAG" "$f" --clobber
-          done
+      # 8 — Upload artifacts to the workflow run (accessible from Actions UI)
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Teamyy-${{ matrix.platform-label }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+          if-no-files-found: warn
+          retention-days: 14

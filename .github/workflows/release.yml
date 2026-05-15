@@ -1,49 +1,105 @@
-name: Release
+# Release — builds Windows + macOS installers and publishes a GitHub Release on version tags
+name: Release Teamyy Desktop
 
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to release (e.g. v1.0.1)'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            build_cmd: npm run dist
-            artifact_glob: |
-              dist/*.exe
-          - os: macos-latest
-            build_cmd: npm run dist:mac
-            artifact_glob: |
-              dist/*.dmg
+            script: dist
+            platform-label: Windows
+          - os: macos-13
+            script: dist:mac
+            platform-label: macOS
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      # 1 — Check out the desktop repo
+      - name: Checkout desktop app
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      # 2 — Check out the frontend repo into ./frontend
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: Mjawadi2002/Frontend-Opero
+          token: ${{ secrets.GH_TOKEN }}
+          path: frontend
+
+      # 3 — Node 20 for both build steps
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install dependencies
+      # 4 — Install frontend deps and produce build/
+      - name: Install and build frontend
+        working-directory: frontend
+        run: npm install && npm run build
+
+      # 5 — Copy React build/ into desktop app build/
+      - name: Copy frontend build into desktop
+        shell: bash
+        run: |
+          mkdir -p build
+          cp -r frontend/build/. build/
+
+      # 6 — Install Electron / electron-builder deps
+      - name: Install desktop dependencies
         run: npm ci
 
-      - name: Build Electron app
-        run: ${{ matrix.build_cmd }}
+      # 7 — Build the native installer (Windows: NSIS .exe + portable | macOS: .dmg)
+      - name: Build ${{ matrix.platform-label }} app
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run ${{ matrix.script }} -- --publish never
 
+      # 8 — Create the GitHub Release (if missing) then upload the artifacts
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ matrix.artifact_glob }}
-          fail_on_unmatched_files: true
-          generate_release_notes: false
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+
+          # Write release notes to a temp file to avoid YAML pipe-character conflicts
+          NOTES_FILE="${RUNNER_TEMP}/release_notes.md"
+          printf "## Teamyy Desktop v%s\n\n" "${VERSION}" > "${NOTES_FILE}"
+          printf "Download the right file for your platform:\n\n" >> "${NOTES_FILE}"
+          printf "- **Windows installer** \`Teamyy.Setup.%s.exe\` — recommended, adds Start Menu shortcut\n" "${VERSION}" >> "${NOTES_FILE}"
+          printf "- **Windows portable** \`Teamyy %s.exe\` — no install needed, run directly\n" "${VERSION}" >> "${NOTES_FILE}"
+          printf "- **macOS** \`Teamyy-%s.dmg\` — open and drag to Applications\n" "${VERSION}" >> "${NOTES_FILE}"
+
+          # Create the release if it does not already exist
+          if ! gh release view "${TAG}" 2>/dev/null; then
+            gh release create "${TAG}" \
+              --title "Teamyy v${VERSION}" \
+              --notes-file "${NOTES_FILE}"
+          fi
+
+          # Upload every installer produced by electron-builder
+          find dist -maxdepth 1 \( -name "*.exe" -o -name "*.dmg" \) | while read -r f; do
+            echo "Uploading ${f}"
+            gh release upload "${TAG}" "${f}" --clobber
+          done
