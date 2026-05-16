@@ -17,7 +17,7 @@ jobs:
           - os: windows-latest
             script: dist
             platform-label: Windows
-          - os: macos-13
+          - os: macos-latest
             script: dist:mac
             platform-label: macOS
 
