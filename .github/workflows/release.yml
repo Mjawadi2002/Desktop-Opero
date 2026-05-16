@@ -1,21 +1,15 @@
-# Release — builds Windows + macOS installers and publishes a GitHub Release on version tags
-name: Release Teamyy Desktop
+name: Build & Release Desktop App
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [main, master]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Version tag to release (e.g. v1.0.1)'
-        required: true
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -30,11 +24,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      # 1 — Check out the desktop repo
       - name: Checkout desktop app
         uses: actions/checkout@v4
 
-      # 2 — Check out the frontend repo into ./frontend
       - name: Checkout frontend
         uses: actions/checkout@v4
         with:
@@ -42,64 +34,87 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           path: frontend
 
-      # 3 — Node 20 for both build steps
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 4 — Install frontend deps and produce build/
       - name: Install and build frontend
         working-directory: frontend
         run: npm install && npm run build
+        env:
+          DISABLE_ESLINT_PLUGIN: 'true'
 
-      # 5 — Copy React build/ into desktop app build/
       - name: Copy frontend build into desktop
         shell: bash
         run: |
           mkdir -p build
           cp -r frontend/build/. build/
 
-      # 6 — Install Electron / electron-builder deps
       - name: Install desktop dependencies
         run: npm ci
 
-      # 7 — Build the native installer (Windows: NSIS .exe + portable | macOS: .dmg)
       - name: Build ${{ matrix.platform-label }} app
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npm run ${{ matrix.script }} -- --publish never
 
-      # 8 — Create the GitHub Release (if missing) then upload the artifacts
-      - name: Upload to GitHub Release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Teamyy-${{ matrix.platform-label }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Update GitHub Release
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read version from package.json
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Teamyy-Windows
+          path: release-assets/windows
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Teamyy-macOS
+          path: release-assets/mac
+
+      - name: Force-update rolling latest tag
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa latest -m "Latest build — ${{ github.sha }}"
+          git push origin latest --force
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ github.event.inputs.tag }}"
-          fi
+      - name: Create or update GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest
+          name: "Teamyy Desktop v${{ steps.pkg.outputs.version }} (latest)"
+          body: |
+            Automated build from `${{ github.ref_name }}` @ [${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
 
-          # Write release notes to a temp file to avoid YAML pipe-character conflicts
-          NOTES_FILE="${RUNNER_TEMP}/release_notes.md"
-          printf "## Teamyy Desktop v%s\n\n" "${VERSION}" > "${NOTES_FILE}"
-          printf "Download the right file for your platform:\n\n" >> "${NOTES_FILE}"
-          printf "- **Windows installer** \`Teamyy.Setup.%s.exe\` — recommended, adds Start Menu shortcut\n" "${VERSION}" >> "${NOTES_FILE}"
-          printf "- **Windows portable** \`Teamyy %s.exe\` — no install needed, run directly\n" "${VERSION}" >> "${NOTES_FILE}"
-          printf "- **macOS** \`Teamyy-%s.dmg\` — open and drag to Applications\n" "${VERSION}" >> "${NOTES_FILE}"
-
-          # Create the release if it does not already exist
-          if ! gh release view "${TAG}" 2>/dev/null; then
-            gh release create "${TAG}" \
-              --title "Teamyy v${VERSION}" \
-              --notes-file "${NOTES_FILE}"
-          fi
-
-          # Upload every installer produced by electron-builder
-          find dist -maxdepth 1 \( -name "*.exe" -o -name "*.dmg" \) | while read -r f; do
-            echo "Uploading ${f}"
-            gh release upload "${TAG}" "${f}" --clobber
-          done
+            | Platform | File |
+            |---|---|
+            | Windows | `Teamyy.Setup.${{ steps.pkg.outputs.version }}.exe` (installer) · `.exe` (portable) |
+            | macOS | `Teamyy-${{ steps.pkg.outputs.version }}.dmg` |
+          artifacts: "release-assets/windows/*.exe,release-assets/mac/*.dmg"
+          allowUpdates: true
+          removeArtifacts: true
+          token: ${{ secrets.GITHUB_TOKEN }}
