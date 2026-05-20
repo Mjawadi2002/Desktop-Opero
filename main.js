@@ -21,7 +21,8 @@ const {
     dialog,
     ipcMain,
     nativeImage,
-    session
+    session,
+    Notification,
 } = require('electron');
 const path  = require('path');
 const fs    = require('fs');
@@ -182,13 +183,15 @@ async function createWindow () {
         if (!app.isQuitting) {
             e.preventDefault();
             mainWindow.hide();
-            // First-time notification
+            // First-time notification using native Windows 11 Action Center
             if (!loadWindowState()._trayNotified) {
-                tray.displayBalloon({
-                    title  : 'Teamyy is still running',
-                    content: 'Teamyy is running in the background. Right-click the tray icon to quit.',
-                    iconType: 'info',
-                });
+                if (Notification.isSupported()) {
+                    new Notification({
+                        title: 'Teamyy is still running',
+                        body : 'Running in the background. Right-click the tray icon to quit.',
+                        icon : ICON_PATH,
+                    }).show();
+                }
                 const s = loadWindowState();
                 s._trayNotified = true;
                 try { fs.writeFileSync(STATE_FILE, JSON.stringify(s)); } catch {}
@@ -333,9 +336,34 @@ ipcMain.handle('get-server-port',  ()  => serverPort);
 ipcMain.handle('open-external',    (_, url) => shell.openExternal(url));
 
 ipcMain.handle('show-notification', (_, { title, body }) => {
-    if (tray) {
+    if (Notification.isSupported()) {
+        const notif = new Notification({ title, body, icon: ICON_PATH });
+        notif.on('click', () => { mainWindow?.show(); mainWindow?.focus(); });
+        notif.show();
+    } else if (tray) {
         tray.displayBalloon({ title, content: body, iconType: 'info' });
     }
+});
+
+// Set tray badge overlay (unread notification count)
+ipcMain.handle('set-tray-badge', (_, count) => {
+    if (!tray) return;
+    try {
+        const baseIcon = nativeImage.createFromPath(TRAY_PATH).resize({ width: 16, height: 16 });
+        if (!count || count <= 0) {
+            tray.setImage(baseIcon);
+            return;
+        }
+        // Draw a red badge dot over the tray icon
+        const badge = nativeImage.createFromDataURL(
+            'data:image/png;base64,' + Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">` +
+                `<image href="${TRAY_PATH}" width="16" height="16"/>` +
+                `<circle cx="12" cy="4" r="4" fill="#ef4444"/>` +
+                `<text x="12" y="7" text-anchor="middle" fill="#fff" font-size="5" font-family="Arial">${Math.min(count, 9)}</text>` +
+                `</svg>`).toString('base64')
+        );
+        tray.setImage(badge.isEmpty() ? baseIcon : badge);
+    } catch { /* non-critical */ }
 });
 
 // Custom window controls

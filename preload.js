@@ -42,4 +42,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('window-maximized',   () => cb(true));
         ipcRenderer.on('window-unmaximized', () => cb(false));
     },
+
+    /** Update tray badge with unread notification count (0 = clear badge) */
+    setTrayBadge : (count) => ipcRenderer.invoke('set-tray-badge', count),
 });
