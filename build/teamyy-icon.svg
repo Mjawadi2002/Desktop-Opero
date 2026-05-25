@@ -1,25 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52" width="52" height="52" role="img" aria-label="Teamyy icon">
-  <defs>
-    <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#8b5cf6"/>
-    </linearGradient>
-    <linearGradient id="icon-shine" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.20"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Background -->
-  <rect x="0" y="0" width="52" height="52" rx="13" fill="url(#icon-grad)"/>
-  <!-- Top-half shine -->
-  <rect x="0" y="0" width="52" height="26" rx="13" fill="url(#icon-shine)"/>
-  <!-- Header strip -->
-  <rect x="5.5" y="5.5" width="41" height="8" rx="3" fill="#ffffff" fill-opacity="0.28"/>
-  <!-- Left column -->
-  <rect x="5.5" y="29" width="11.5" height="17.5" rx="2.5" fill="#ffffff" fill-opacity="0.80"/>
-  <!-- Middle column (tallest) -->
-  <rect x="20.25" y="21" width="11.5" height="25.5" rx="2.5" fill="#ffffff" fill-opacity="1.00"/>
-  <!-- Right column -->
-  <rect x="35" y="35.5" width="11.5" height="11" rx="2.5" fill="#ffffff" fill-opacity="0.62"/>
+<svg width="512" height="512" viewBox="36 36 80 80" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(40, 44)">
+    <rect x="0"  y="0"  width="72" height="16" rx="4" fill="#7B6CF0"/>
+    <rect x="20" y="24" width="32" height="16" rx="4" fill="#9B8FF4" opacity="0.85"/>
+    <rect x="20" y="48" width="32" height="16" rx="4" fill="#B8AEFF" opacity="0.6"/>
+    <circle cx="7"  cy="8"  r="3" fill="#FFFFFF" opacity="0.18"/>
+    <circle cx="36" cy="32" r="3" fill="#FFFFFF" opacity="0.13"/>
+    <circle cx="36" cy="56" r="3" fill="#FFFFFF" opacity="0.08"/>
+  </g>
 </svg>

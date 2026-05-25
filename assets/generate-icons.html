@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teamyy Icon Generator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; }
+    h2 { margin-bottom: 0.5rem; }
+    p  { color: #94a3b8; margin-bottom: 1.5rem; }
+    .cards { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; text-align: center; min-width: 200px; }
+    canvas { display: block; margin: 0 auto 1rem; border-radius: 8px; image-rendering: pixelated; }
+    button { background: #7B6CF0; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1.25rem; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #9B8FF4; }
+    .label { font-size: 0.8rem; color: #64748b; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h2>Teamyy Desktop Icon Generator</h2>
+  <p>Click a button to download the PNG. Replace the file in <code>assets/</code> with the downloaded file.</p>
+  <div class="cards" id="cards"></div>
+
+  <script>
+    const iconSVG = `<svg width="512" height="512" viewBox="36 36 80 80" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(40, 44)">
+    <rect x="0"  y="0"  width="72" height="16" rx="4" fill="#7B6CF0"/>
+    <rect x="20" y="24" width="32" height="16" rx="4" fill="#9B8FF4" opacity="0.85"/>
+    <rect x="20" y="48" width="32" height="16" rx="4" fill="#B8AEFF" opacity="0.6"/>
+    <circle cx="7"  cy="8"  r="3" fill="#FFFFFF" opacity="0.18"/>
+    <circle cx="36" cy="32" r="3" fill="#FFFFFF" opacity="0.13"/>
+    <circle cx="36" cy="56" r="3" fill="#FFFFFF" opacity="0.08"/>
+  </g>
+</svg>`;
+
+    const exports = [
+      { name: 'icon.png',      size: 512, bg: null,      label: 'App icon (512×512) — transparent' },
+      { name: 'icon-bg.png',   size: 512, bg: '#0f172a', label: 'App icon (512×512) — dark bg (recommended for Windows)' },
+      { name: 'tray-icon.png', size: 16,  bg: null,      label: 'Tray icon (16×16) — transparent' },
+    ];
+
+    const cards = document.getElementById('cards');
+
+    exports.forEach(({ name, size, bg, label }) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const lbl = document.createElement('div');
+      lbl.className = 'label';
+      lbl.textContent = label;
+
+      const canvas = document.createElement('canvas');
+      const display = Math.min(size, 128);
+      canvas.width  = display;
+      canvas.height = display;
+      canvas.style.width  = display + 'px';
+      canvas.style.height = display + 'px';
+
+      const btn = document.createElement('button');
+      btn.textContent = `Download ${name}`;
+
+      const img = new Image();
+      const blob = new Blob([iconSVG], { type: 'image/svg+xml' });
+      const url  = URL.createObjectURL(blob);
+      img.onload = () => {
+        const ctx = canvas.getContext('2d');
+        if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, display, display); }
+        ctx.drawImage(img, 0, 0, display, display);
+        URL.revokeObjectURL(url);
+
+        btn.onclick = () => {
+          const full = document.createElement('canvas');
+          full.width  = size;
+          full.height = size;
+          const c = full.getContext('2d');
+          if (bg) { c.fillStyle = bg; c.fillRect(0, 0, size, size); }
+          c.drawImage(img, 0, 0, size, size);
+          full.toBlob(b => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = name;
+            a.click();
+          }, 'image/png');
+        };
+      };
+      img.src = url;
+
+      card.appendChild(lbl);
+      card.appendChild(canvas);
+      card.appendChild(btn);
+      cards.appendChild(card);
+    });
+  </script>
+</body>
+</html>
