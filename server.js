@@ -75,8 +75,17 @@ const startServer = (isDev = false) => {
         // ── Serve React SPA ──────────────────────────────────────────────────
         const buildPath = path.join(__dirname, 'build');
         expressApp.use(express.static(buildPath, {
-            maxAge : '1d',          // cache static assets for 1 day
-            etag   : true
+            etag   : true,
+            setHeaders: (res, filePath) => {
+                // Hashed bundles in /static/ are immutable — long-cache them.
+                // Everything else (logos, manifest, icons) must not be cached,
+                // or asset updates will be invisible until the cache expires.
+                if (filePath.includes(`${path.sep}static${path.sep}`)) {
+                    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+                } else {
+                    res.setHeader('Cache-Control', 'no-cache');
+                }
+            }
         }));
 
         // SPA fallback — all unmatched routes serve index.html
