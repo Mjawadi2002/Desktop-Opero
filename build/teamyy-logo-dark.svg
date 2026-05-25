@@ -1,15 +1,12 @@
 <svg width="600" height="160" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg">
   <g transform="translate(40, 44)">
-    <rect x="0"  y="0"  width="72" height="16" rx="4" fill="#7B6CF0"/>
-    <rect x="20" y="24" width="32" height="16" rx="4" fill="#9B8FF4" opacity="0.85"/>
-    <rect x="20" y="48" width="32" height="16" rx="4" fill="#B8AEFF" opacity="0.6"/>
-    <circle cx="7"  cy="8"  r="3" fill="#FFFFFF" opacity="0.18"/>
-    <circle cx="36" cy="32" r="3" fill="#FFFFFF" opacity="0.13"/>
-    <circle cx="36" cy="56" r="3" fill="#FFFFFF" opacity="0.08"/>
+    <rect x="0"  y="0"  width="72" height="16" rx="4" fill="#9B8FF4"/>
+    <rect x="20" y="24" width="32" height="16" rx="4" fill="#7B6CF0"/>
+    <rect x="20" y="48" width="32" height="16" rx="4" fill="#5540E0"/>
   </g>
   <text x="138" y="106"
     font-family="'Helvetica Neue', Arial, sans-serif"
     font-size="72" font-weight="700" letter-spacing="-3">
-    <tspan fill="#FFFFFF">team</tspan><tspan fill="#9B8FF4">yy</tspan>
+    <tspan fill="#F3F1FF">team</tspan><tspan fill="#9B8FF4">yy</tspan>
   </text>
 </svg>
