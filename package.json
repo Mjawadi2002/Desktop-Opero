@@ -13,6 +13,7 @@
     "start": "electron . --dev",
     "dev": "electron . --dev",
     "dist": "electron-builder --win",
+    "dist:appx": "electron-builder --win appx",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
     "dist:all": "electron-builder --win --mac --linux"
@@ -55,6 +56,15 @@
       ],
       "icon": "assets/icon.png",
       "requestedExecutionLevel": "asInvoker"
+    },
+    "appx": {
+      "identityName": "Teamyy.Teamyy",
+      "publisher": "CN=038F5034-99AB-4929-BB6C-9021B3C813A0",
+      "publisherDisplayName": "Teamyy",
+      "applicationId": "Teamyy",
+      "backgroundColor": "#17171c",
+      "showNameOnTiles": true,
+      "languages": ["en-US"]
     },
     "nsis": {
       "artifactName": "${productName}.Setup.${version}.${ext}",
