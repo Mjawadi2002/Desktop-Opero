@@ -1,30 +1,33 @@
-# Opero Desktop — CLAUDE.md
+# Teamyy Desktop — CLAUDE.md
 
 ## What this is
-Electron.js wrapper that delivers the **Opero** React SPA as a native Windows/macOS/Linux desktop application.
+Electron.js wrapper that delivers the **Teamyy** React SPA as a native Windows/macOS/Linux desktop application.
+
+> Legacy note: the product was formerly **Opero**. The backend env var and some default URLs still use the `OPERO_`/`opero.cloud-ip.cc` names in code — that's intentional, not a bug. The product name shown to users is **Teamyy**.
 
 ## Architecture
 ```
-desktop-opero/
+desktop-Teamyy/
 ├── main.js          — Electron main process (window, tray, menu, IPC, state persistence)
-├── preload.js       — Contextbridge: exposes safe APIs to renderer
+├── preload.js       — contextBridge: exposes safe APIs to the renderer
 ├── server.js        — Local Express HTTP server serving build/ + proxying /api + /socket.io
-├── build/           — Production React SPA (copied from Frontend-Opero/build)
+├── generate-icons.js— builds assets/icon.png + assets/tray-icon.png from the Teamyy mark
+├── build/           — Production React SPA (copied from Frontend-Teamyy/build)
 ├── assets/
-│   ├── icon.png     — 512×512 app icon (used for taskbar, dock, window)
-│   └── tray-icon.png — 16×16 system-tray icon
+│   ├── icon.png     — app icon (taskbar, dock, window)
+│   └── tray-icon.png— system-tray icon
 ├── package.json     — Electron + electron-builder config
-└── dist/            — Output of `npm run dist` (.exe installer on Windows)
+└── dist/            — Output of `npm run dist` (installer)
 ```
 
 ## How it connects to the backend
 `server.js` starts a **local Express server on a random free port** when the app launches.
 
-| Request path      | Forwarded to |
+| Request path   | Forwarded to |
 |---|---|
-| `/api/*`          | `OPERO_BACKEND_URL` (default: `https://www.opero.cloud-ip.cc`) |
-| `/socket.io/*`    | same backend — WebSocket upgraded automatically |
-| `/*` (static)     | `build/index.html` + static assets |
+| `/api/*`       | `OPERO_BACKEND_URL` (prod default `https://www.opero.cloud-ip.cc`; dev fallback the Railway URL) |
+| `/socket.io/*` | same backend — WebSocket upgraded automatically |
+| `/*` (static)  | `build/index.html` + static assets |
 
 Set `OPERO_BACKEND_URL` in `.env` to point at a different backend (e.g. `http://localhost:5000` for local dev).
 
@@ -38,19 +41,19 @@ npm run dist:linux # build Linux AppImage
 ```
 
 ## Dev setup
-1. Make sure `Frontend-Opero` has been built: `cd ../Frontend-Opero && npm run build`
-2. Ensure the build is copied: `cp -r ../Frontend-Opero/build ./build`
+1. Build the SPA: `cd ../Frontend-Teamyy && npm run build`
+2. Copy the build in: `cp -r ../Frontend-Teamyy/build ./build`
 3. `npm install`
 4. `npm start`
 
 ## Environment variables
 | Variable | Default | Description |
 |---|---|---|
-| `OPERO_BACKEND_URL` | `https://www.opero.cloud-ip.cc` | Backend API + Socket.IO base URL |
+| `OPERO_BACKEND_URL` | `https://www.opero.cloud-ip.cc` | Backend API + Socket.IO base URL (legacy name; points at the Teamyy backend) |
 
-Create a `.env` file in `desktop-opero/` to override.
+Create a `.env` in `desktop-Teamyy/` to override.
 
 ## Packaging rules
 - Never commit `dist/`, `node_modules/`, or `build/` to git
-- Icon must be `assets/icon.png` ≥ 512×512 — electron-builder auto-converts to `.ico` / `.icns`
+- App icon must be `assets/icon.png` ≥ 512×512 — electron-builder auto-converts to `.ico` / `.icns`
 - NSIS installer config is in `package.json` under `"build"`
