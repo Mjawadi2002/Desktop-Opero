@@ -22,6 +22,7 @@ const {
     ipcMain,
     nativeImage,
     session,
+    desktopCapturer,
     Notification,
 } = require('electron');
 const path  = require('path');
@@ -133,6 +134,20 @@ async function createWindow () {
         mainWindow.setAutoHideMenuBar(true);
         mainWindow.setMenuBarVisibility(false);
     }
+
+    // ── Screen recording (Documents & Videos module) ────────────────────────
+    // getDisplayMedia() in the renderer requires a display-media request handler
+    // in Electron. Grant the primary screen so the in-app recorder can capture.
+    mainWindow.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
+        desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+            callback(sources && sources.length ? { video: sources[0], audio: 'loopback' } : {});
+        }).catch(() => callback({}));
+    }, { useSystemPicker: true });
+
+    // Auto-approve camera/microphone prompts (recorder needs them; the app is trusted).
+    mainWindow.webContents.session.setPermissionRequestHandler((wc, permission, cb) => {
+        cb(['media', 'display-capture', 'audioCapture', 'videoCapture'].includes(permission));
+    });
 
     if (state.isMaximized) mainWindow.maximize();
 
