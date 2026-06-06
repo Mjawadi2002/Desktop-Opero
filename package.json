@@ -82,7 +82,12 @@
         "dmg"
       ],
       "icon": "assets/icon.png",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Teamyy uses your camera for screen and webcam recordings.",
+        "NSMicrophoneUsageDescription": "Teamyy uses your microphone to record audio in your videos.",
+        "NSScreenCaptureUsageDescription": "Teamyy records your screen for the Documents & Videos module."
+      }
     },
     "linux": {
       "target": [

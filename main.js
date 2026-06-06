@@ -23,6 +23,7 @@ const {
     nativeImage,
     session,
     desktopCapturer,
+    systemPreferences,
     Notification,
 } = require('electron');
 const path  = require('path');
@@ -126,6 +127,11 @@ async function createWindow () {
             webSecurity        : true,
             sandbox            : false,
             spellcheck         : false,
+            // Keep rAF + timers running at full rate when the window is unfocused.
+            // The screen recorder composites the webcam PiP onto a canvas via
+            // requestAnimationFrame; default throttling would freeze that canvas
+            // (black/frozen video) the moment the user switches to another window.
+            backgroundThrottling: false,
         }
     });
 
@@ -349,6 +355,52 @@ ipcMain.handle('get-app-version',  ()  => app.getVersion());
 ipcMain.handle('get-backend-url',  ()  => process.env.OPERO_BACKEND_URL || 'https://www.opero.cloud-ip.cc');
 ipcMain.handle('get-server-port',  ()  => serverPort);
 ipcMain.handle('open-external',    (_, url) => shell.openExternal(url));
+
+// ── Media permissions (camera / microphone / screen) ──────────────────────────
+// The in-app Chromium layer is auto-approved by the permission handlers on the
+// window, but the OS layer still gates access. On macOS we trigger the native
+// prompt (askForMediaAccess); on Windows we report the OS privacy-setting status
+// so the renderer can guide the user. Returns { camera, microphone, screen }.
+ipcMain.handle('ensure-media-access', async (_, kinds = {}) => {
+    const result = { camera: 'granted', microphone: 'granted', screen: 'granted' };
+
+    // Windows / macOS expose getMediaAccessStatus; Linux returns 'granted'.
+    const statusOf = (type) => {
+        try { return systemPreferences.getMediaAccessStatus(type); }
+        catch { return 'granted'; }
+    };
+
+    if (process.platform === 'darwin') {
+        if (kinds.camera) {
+            let st = statusOf('camera');
+            if (st === 'not-determined') {
+                st = (await systemPreferences.askForMediaAccess('camera')) ? 'granted' : 'denied';
+            }
+            result.camera = st;
+        }
+        if (kinds.microphone) {
+            let st = statusOf('microphone');
+            if (st === 'not-determined') {
+                st = (await systemPreferences.askForMediaAccess('microphone')) ? 'granted' : 'denied';
+            }
+            result.microphone = st;
+        }
+        if (kinds.screen) {
+            // Read-only on macOS; the user must grant it in System Settings.
+            const st = statusOf('screen');
+            result.screen = st === 'granted' ? 'granted' : 'denied';
+            if (result.screen === 'denied') {
+                shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture').catch(() => {});
+            }
+        }
+    } else if (process.platform === 'win32') {
+        if (kinds.camera)     result.camera     = statusOf('camera');
+        if (kinds.microphone) result.microphone = statusOf('microphone');
+        // Windows has no per-app screen-capture gate; desktopCapturer handles it.
+    }
+
+    return result;
+});
 
 ipcMain.handle('show-notification', (_, { title, body }) => {
     if (Notification.isSupported()) {

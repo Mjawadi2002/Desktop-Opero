@@ -27,6 +27,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /** Open a URL in the OS default browser */
     openExternal  : (url) => ipcRenderer.invoke('open-external', url),
 
+    /**
+     * Ensure OS-level camera/microphone/screen access before recording.
+     * Prompts on macOS, reports privacy-setting status on Windows.
+     * @param {{camera?:boolean, microphone?:boolean, screen?:boolean}} kinds
+     * @returns {Promise<{camera:string, microphone:string, screen:string}>} per-device status
+     */
+    ensureMediaAccess : (kinds) => ipcRenderer.invoke('ensure-media-access', kinds),
+
     /** Show a Windows balloon notification via the system tray */
     showNotification : ({ title, body }) =>
         ipcRenderer.invoke('show-notification', { title, body }),
